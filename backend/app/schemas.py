@@ -81,6 +81,13 @@ class WordEntry(BaseModel):
     kanji: list[str] = []
 
 
+class AnkiRequest(BaseModel):
+    """Payload for building an Anki deck from a song's word glossary."""
+
+    title: str | None = None
+    words: list[WordEntry] = []
+
+
 class AnalyzeResponse(BaseModel):
     video_id: str
     title: str | None = None

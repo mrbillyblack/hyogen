@@ -51,7 +51,24 @@ export function Menu({ theme, setTheme }: Props) {
                 <strong>Glossary</strong> defines each word.
               </li>
               <li>Expand a glossary word to see its individual kanji.</li>
+              <li>Export the result to PDF or an Anki deck.</li>
             </ol>
+
+            <div className="menu-credit">
+              <p>© 2026 Billy Black</p>
+              <a
+                href="https://ko-fi.com/F8U5224XOY"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  height="36"
+                  style={{ border: 0, height: 36 }}
+                  src="https://storage.ko-fi.com/cdn/kofi6.png?v=6"
+                  alt="Buy Me a Coffee at ko-fi.com"
+                />
+              </a>
+            </div>
           </section>
 
           <section className="menu-section">
