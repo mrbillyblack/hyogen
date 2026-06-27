@@ -2,8 +2,8 @@
 
 Annotate Japanese song lyrics. Hyogen fetches lyrics from YouTube Music,
 segments each line into words, spells the kanji-bearing words out in hiragana
-(contextual furigana via MeCab), and gives an English definition for each kanji
-sourced from [kanjiapi.dev](https://kanjiapi.dev).
+(contextual furigana via MeCab), and defines each **word** in English (JMdict) —
+with a per-kanji breakdown available underneath.
 
 ## How it works
 
@@ -15,20 +15,28 @@ sourced from [kanjiapi.dev](https://kanjiapi.dev).
    (the kana spelling, e.g. 東京 → トウキョウ — not the phonetic `pron`,
    トーキョー), folded to hiragana. This gives the reading actually used in
    context (回る → まわる), which a per-character lookup cannot.
-3. **Per-kanji meanings** — every unique kanji (anything *not* hiragana/katakana
+3. **Word definitions** — each kanji-bearing word's dictionary form (lemma) is
+   looked up in **JMdict** via `jamdict` (offline). The JMdict sense whose kana
+   matches MeCab's contextual reading is chosen, so 回る resolves to "to turn"
+   (まわる), not "to go around" (めぐる). This is the primary glossary —
+   defining 表現 ("expression"), not just 表 and 現.
+4. **Per-kanji meanings** — every unique kanji (anything *not* hiragana/katakana
    in the CJK range, plus the 々 iteration mark) is looked up against
-   kanjiapi.dev for its English meanings, returned as a deduplicated glossary.
-4. **Lazy cache** — kanji lookups are cached in Postgres. Only kanji that
+   kanjiapi.dev for its English meanings. These power the collapsible per-kanji
+   breakdown shown under each glossary word.
+5. **Lazy cache** — kanji lookups are cached in Postgres. Only kanji that
    actually appear in a song are ever fetched, and each is fetched at most once
    (404s are cached too). A re-analysis of the same song hits the cache and
-   makes zero outbound kanjiapi calls.
+   makes zero outbound kanjiapi calls. (JMdict is local, so word lookups need no
+   cache.)
 
 ## Stack
 
-- **React + Vite** (`frontend/`) — installable PWA; search/paste box + a Lyrics
-  pane (furigana) and a Glossary pane
+- **React + Vite** (`frontend/`) — installable PWA; search/paste box, a Lyrics
+  pane (furigana) and a word Glossary pane, light/dark theme, hamburger menu
 - **FastAPI** (`backend/app`) — async API
 - **MeCab** (fugashi + unidic-lite) — word segmentation + contextual readings
+- **JMdict** (jamdict + jamdict-data) — offline word definitions
 - **Postgres 16** — kanji cache
 - **Caddy** — reverse proxy on `:80` (auto-TLS in production)
 - **ytmusicapi fork** (`ytmusicapi/`) — vendored, installed from source
@@ -48,16 +56,18 @@ hyogen/
 │   │   ├── kana.py            # char classification + katakana→hiragana
 │   │   ├── tokenizer.py       # MeCab word segmentation + contextual readings
 │   │   ├── kanji_service.py   # kanjiapi.dev client + lazy Postgres cache
-│   │   ├── lyrics_service.py  # ytmusicapi wrapper (videoId/URL → lyrics)
-│   │   └── analyze.py         # ties lyrics + tokenizer + kanji lookup together
+│   │   ├── word_service.py    # JMdict (jamdict) word definitions
+│   │   ├── lyrics_service.py  # ytmusicapi wrapper (search + videoId/URL → lyrics)
+│   │   └── analyze.py         # ties lyrics + tokenizer + kanji/word lookups
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/                # React + Vite PWA
 │   ├── src/
-│   │   ├── App.tsx             # search + Lyrics/Glossary panes
+│   │   ├── App.tsx             # search + Lyrics/Glossary panes + menu
 │   │   ├── api.ts              # fetch wrappers (/api/*)
 │   │   ├── types.ts           # mirrors backend response models
-│   │   └── components/         # SearchBar, Pane, LyricsPane, GlossaryPane
+│   │   ├── useTheme.ts         # light/dark theme (persisted)
+│   │   └── components/         # SearchBar, Pane, LyricsPane, GlossaryPane, Menu
 │   ├── vite.config.ts         # dev proxy to backend + PWA manifest
 │   └── package.json
 ├── docker-compose.yml       # db + api + frontend + caddy
@@ -123,33 +133,38 @@ curl -X POST http://localhost/api/analyze \
     {
       "text": "罵られたって ウザイ日だって",
       "words": [
-        {"surface": "罵ら", "reading": "ののしら", "pos": "動詞",
-         "contains_kanji": true, "kanji": ["罵"]},
-        {"surface": "れ", "reading": null, "pos": "助動詞",
-         "contains_kanji": false, "kanji": []},
-        {"surface": "日", "reading": "ひ", "pos": "名詞",
-         "contains_kanji": true, "kanji": ["日"]}
+        {"surface": "罵ら", "reading": "ののしら", "lemma": "罵る",
+         "contains_kanji": true, "kanji": ["罵"]}
         // ...one entry per word; `reading` is the contextual furigana
       ]
     }
+  ],
+  "word_glossary": [
+    {"word": "罵る", "reading": "ののしる",
+     "definitions": ["to abuse (verbally)", "to curse at"], "kanji": ["罵"]},
+    {"word": "此の世", "reading": "このよ",
+     "definitions": ["this world", "world of the living"], "kanji": ["世"]}
+    // ...one entry per unique word (dictionary form), in order of appearance
   ],
   "glossary": {
     "罵": {"character": "罵", "found": true,
            "readings_hiragana": ["ののしる", "ば"], "meanings": ["abuse", "insult"],
            "grade": null, "jlpt": 1, "stroke_count": 15}
-    // ...one entry per unique kanji in the song (English meanings live here)
+    // ...one entry per unique kanji — powers the per-word collapsible breakdown
   }
 }
 ```
 
-Each word carries the reading actually used in context; look up the characters
-in `word.kanji` against the top-level `glossary` for English meanings.
+`word_glossary` is the primary glossary (whole-word definitions). Each word's
+`kanji` are looked up in the per-kanji `glossary` for the expandable breakdown.
 
 ## Notes
 
 - Word readings come from MeCab's contextual segmentation, so 回る → まわる and
-  今 → いま are resolved correctly. The `glossary` still lists *all* possible
-  readings per kanji (from kanjiapi) alongside the English meanings.
+  今 → いま are resolved correctly, and the matching JMdict sense is chosen. The
+  per-kanji `glossary` still lists *all* possible readings per kanji.
+- Lyrics come from YouTube Music and aren't available for every song, so some
+  links return no lyrics — the UI shows a demo note to that effect.
 - kanjiapi.dev rejects the default Python User-Agent (403), so the client sets
   one explicitly.
 - fugashi/unidic-lite ship MeCab + the dictionary as pip wheels, so no system

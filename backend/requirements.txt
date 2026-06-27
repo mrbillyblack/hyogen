@@ -8,4 +8,7 @@ pydantic-settings==2.7.1
 # MeCab; unidic-lite bundles the dictionary — no apt/system packages needed.
 fugashi==1.5.2
 unidic-lite==1.0.8
+# Offline J→E dictionary (JMdict) for word-level definitions.
+jamdict==0.1a11.post2
+jamdict-data==1.5
 # ytmusicapi is installed from the vendored fork (see Dockerfile).

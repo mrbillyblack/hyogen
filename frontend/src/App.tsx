@@ -2,7 +2,9 @@ import { useState } from "react";
 import { SearchBar } from "./components/SearchBar";
 import { LyricsPane } from "./components/LyricsPane";
 import { GlossaryPane } from "./components/GlossaryPane";
+import { Menu } from "./components/Menu";
 import { analyzeSong, searchSongs } from "./api";
+import { useTheme } from "./useTheme";
 import type { AnalyzeResponse, SearchResult } from "./types";
 
 function looksLikeLink(text: string): boolean {
@@ -13,6 +15,7 @@ function looksLikeLink(text: string): boolean {
 }
 
 export default function App() {
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<SearchResult[] | null>(null);
@@ -58,10 +61,16 @@ export default function App() {
         <h1>
           hyōgen <span className="app-kanji">表現</span>
         </h1>
+        <Menu theme={theme} setTheme={setTheme} />
       </header>
 
       <div className="search-area">
         <SearchBar onSubmit={handleSubmit} loading={loading} />
+
+        <p className="demo-note">
+          Demo — lyrics come from YouTube Music and aren&rsquo;t available for
+          every song, so some links won&rsquo;t return results.
+        </p>
 
         {error && <p className="error">{error}</p>}
 
@@ -87,7 +96,10 @@ export default function App() {
 
       <main className="panes">
         <LyricsPane lines={analysis?.lines ?? []} />
-        <GlossaryPane glossary={analysis?.glossary ?? {}} />
+        <GlossaryPane
+          words={analysis?.word_glossary ?? []}
+          kanji={analysis?.glossary ?? {}}
+        />
       </main>
     </div>
   );
