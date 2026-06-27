@@ -11,4 +11,6 @@ unidic-lite==1.0.8
 # Offline J→E dictionary (JMdict) for word-level definitions.
 jamdict==0.1a11.post2
 jamdict-data==1.5
+# Build Anki decks (.apkg) from the glossary.
+genanki==0.13.1
 # ytmusicapi is installed from the vendored fork (see Dockerfile).

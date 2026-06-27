@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SearchBar } from "./components/SearchBar";
 import { LyricsPane } from "./components/LyricsPane";
 import { GlossaryPane } from "./components/GlossaryPane";
 import { Menu } from "./components/Menu";
-import { analyzeSong, searchSongs } from "./api";
+import { analyzeSong, exportAnkiDeck, searchSongs } from "./api";
 import { useTheme } from "./useTheme";
 import type { AnalyzeResponse, SearchResult } from "./types";
 
@@ -14,16 +14,28 @@ function looksLikeLink(text: string): boolean {
   );
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function App() {
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
+  // The glossary word (lemma) currently linked from a hovered/tapped lyric.
+  const [activeWord, setActiveWord] = useState<string | null>(null);
 
   async function analyze(input: { videoId?: string; url?: string }) {
     setError(null);
     setResults(null);
+    setActiveWord(null);
     setLoading(true);
     try {
       const data = await analyzeSong(input);
@@ -54,6 +66,34 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  function exportPdf() {
+    // The browser's print-to-PDF handles Japanese fonts natively; the print
+    // stylesheet (index.css) hides UI chrome and expands the panes.
+    const original = document.title;
+    if (analysis?.title) document.title = analysis.title;
+    window.print();
+    document.title = original;
+  }
+
+  async function exportAnki() {
+    if (!analysis) return;
+    try {
+      const blob = await exportAnkiDeck(analysis.title, analysis.word_glossary);
+      const base = (analysis.title ?? "hyogen").replace(/[^\w\- ]+/g, "").trim();
+      downloadBlob(blob, `${base || "hyogen"}.apkg`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Anki export failed.");
+    }
+  }
+
+  const hasAnalysis = !!analysis?.has_lyrics;
+
+  // Lemmas that have a glossary entry — i.e. which lyric words are linkable.
+  const glossaryWords = useMemo(
+    () => new Set((analysis?.word_glossary ?? []).map((w) => w.word)),
+    [analysis],
+  );
 
   return (
     <div className="app">
@@ -89,16 +129,34 @@ export default function App() {
           </ul>
         )}
 
-        {analysis?.has_lyrics && analysis.title && (
-          <p className="now-playing">{analysis.title}</p>
+        {hasAnalysis && (
+          <div className="now-playing-row">
+            {analysis?.title && (
+              <p className="now-playing">{analysis.title}</p>
+            )}
+            <div className="actions">
+              <button type="button" onClick={exportPdf}>
+                Export PDF
+              </button>
+              <button type="button" onClick={exportAnki}>
+                Anki deck
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
       <main className="panes">
-        <LyricsPane lines={analysis?.lines ?? []} />
+        <LyricsPane
+          lines={analysis?.lines ?? []}
+          glossaryWords={glossaryWords}
+          activeWord={activeWord}
+          onActivate={setActiveWord}
+        />
         <GlossaryPane
           words={analysis?.word_glossary ?? []}
           kanji={analysis?.glossary ?? {}}
+          activeWord={activeWord}
         />
       </main>
     </div>

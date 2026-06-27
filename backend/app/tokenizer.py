@@ -27,8 +27,23 @@ def tokenize_line(line: str) -> list[Word]:
         return []
 
     words: list[Word] = []
+    cursor = 0
     for node in _tagger(line):
         surface = node.surface
+        if not surface:
+            continue
+
+        # MeCab drops inter-token whitespace, which makes English lines run
+        # together ("Bad example" → "Badexample"). Align each surface back to
+        # the original line and re-insert any skipped characters as their own
+        # token so the original spacing survives.
+        idx = line.find(surface, cursor)
+        if idx == -1:
+            idx = cursor
+        if idx > cursor:
+            words.append(Word(surface=line[cursor:idx], contains_kanji=False))
+        cursor = idx + len(surface)
+
         kanji_chars = [c for c in surface if is_kanji(c)]
         contains = bool(kanji_chars)
 
@@ -69,4 +84,9 @@ def tokenize_line(line: str) -> list[Word]:
                 lemma_reading=lemma_reading,
             )
         )
+
+    # Any trailing characters MeCab dropped (e.g. trailing spaces).
+    if cursor < len(line):
+        words.append(Word(surface=line[cursor:], contains_kanji=False))
+
     return words

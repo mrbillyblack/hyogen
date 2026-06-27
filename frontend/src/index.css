@@ -10,6 +10,7 @@
   --ink: #1f2330;
   --muted: #6b7280;
   --line: #d8dbe3;
+  --hl: #e9e7fb;
 
   --font-jp: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo",
     "Noto Sans JP", system-ui, sans-serif;
@@ -28,6 +29,7 @@
   --ink: #e7e9f0;
   --muted: #9aa1b0;
   --line: #2c303b;
+  --hl: #2e2b55;
 }
 
 * {
@@ -205,9 +207,59 @@ body {
   font-size: 0.9rem;
 }
 
+.now-playing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
 .now-playing {
-  margin: 0.5rem 0 0;
+  margin: 0;
   font-weight: 600;
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.actions button {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  border-color: var(--indigo);
+  color: var(--indigo);
+}
+
+.menu-credit {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+.menu-credit p {
+  margin: 0;
+  font-size: 0.8rem;
   color: var(--muted);
 }
 
@@ -332,10 +384,25 @@ body {
   line-height: 2.25rem;
   font-family: var(--font-jp);
   font-size: 1.15rem;
+  /* Preserve recovered spacing (e.g. English words) while still wrapping. */
+  white-space: pre-wrap;
 }
 
 .lyric-blank {
   height: 1.1rem;
+}
+
+/* Kanji words that have a glossary entry are interactive. */
+.lyric-word {
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 0 1px;
+  transition: background 0.12s;
+}
+
+.lyric-word:hover,
+.lyric-word.active {
+  background: var(--hl);
 }
 
 ruby rt {
@@ -348,6 +415,15 @@ ruby rt {
 .g-word {
   border-bottom: 1px solid var(--line);
   padding: 0.35rem 0;
+  border-radius: 6px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+/* Highlighted when its word is hovered/tapped in the lyrics. */
+.g-word.active {
+  background: var(--hl);
+  box-shadow: inset 3px 0 0 var(--indigo);
+  padding-left: 0.5rem;
 }
 
 .g-word > summary {
@@ -430,5 +506,65 @@ ruby rt {
 @media (max-width: 640px) {
   .panes {
     flex-direction: column;
+  }
+}
+
+/* Print / export to PDF --------------------------------------------------- */
+@media print {
+  .menu,
+  .search-area,
+  .actions,
+  .pane-scroll {
+    display: none !important;
+  }
+
+  .app {
+    height: auto;
+    max-width: none;
+    display: block;
+  }
+
+  .app-header {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Stack the panes and let all content flow across pages. */
+  .panes {
+    display: block;
+  }
+
+  .pane {
+    border: none;
+    border-radius: 0;
+    margin-bottom: 1.5rem;
+    break-inside: auto;
+  }
+
+  .pane-title {
+    border: none;
+    border-bottom: 2px solid #000;
+    background: none;
+    padding-left: 0;
+  }
+
+  .pane-inner {
+    display: block;
+  }
+
+  .pane-body {
+    overflow: visible;
+    background: none;
+    padding: 0.5rem 0;
+  }
+
+  /* Drop the disclosure arrow; each word prints its reading + definition. */
+  .g-word > summary::before {
+    content: "";
+  }
+
+  .lyric-line,
+  .g-word,
+  .g-kanji-row {
+    break-inside: avoid;
   }
 }

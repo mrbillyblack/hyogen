@@ -37,6 +37,7 @@ with a per-kanji breakdown available underneath.
 - **FastAPI** (`backend/app`) — async API
 - **MeCab** (fugashi + unidic-lite) — word segmentation + contextual readings
 - **JMdict** (jamdict + jamdict-data) — offline word definitions
+- **genanki** — exports the glossary as an Anki deck (.apkg)
 - **Postgres 16** — kanji cache
 - **Caddy** — reverse proxy on `:80` (auto-TLS in production)
 - **ytmusicapi fork** (`ytmusicapi/`) — vendored, installed from source
@@ -57,6 +58,7 @@ hyogen/
 │   │   ├── tokenizer.py       # MeCab word segmentation + contextual readings
 │   │   ├── kanji_service.py   # kanjiapi.dev client + lazy Postgres cache
 │   │   ├── word_service.py    # JMdict (jamdict) word definitions
+│   │   ├── anki_service.py    # builds an Anki deck (.apkg) from the glossary
 │   │   ├── lyrics_service.py  # ytmusicapi wrapper (search + videoId/URL → lyrics)
 │   │   └── analyze.py         # ties lyrics + tokenizer + kanji/word lookups
 │   ├── requirements.txt
@@ -112,6 +114,7 @@ uvicorn app.main:app --reload --port 8000
 | GET  | `/health` | Liveness check |
 | GET  | `/api/search?q=` | Search YouTube Music for songs (returns videoIds) |
 | POST | `/api/analyze` | Annotate a song's lyrics. Body: `{"videoId": "..."}` or `{"url": "..."}` |
+| POST | `/api/anki` | Build an Anki deck (.apkg) from the glossary. Body: `{"title", "words": [...]}` |
 | GET  | `/api/kanji/{char}` | Readings + meanings for a single kanji |
 
 Interactive docs at `http://localhost/docs`.
@@ -165,6 +168,11 @@ curl -X POST http://localhost/api/analyze \
   per-kanji `glossary` still lists *all* possible readings per kanji.
 - Lyrics come from YouTube Music and aren't available for every song, so some
   links return no lyrics — the UI shows a demo note to that effect.
+- **Exports**: "Export PDF" uses the browser's print-to-PDF (a print
+  stylesheet hides the UI chrome and flows the lyrics + glossary across pages —
+  Japanese renders with system fonts, no font embedding). "Anki deck" downloads
+  an `.apkg` (front = kanji word, back = reading + definition) built by
+  `genanki`.
 - kanjiapi.dev rejects the default Python User-Agent (403), so the client sets
   one explicitly.
 - fugashi/unidic-lite ship MeCab + the dictionary as pip wheels, so no system
