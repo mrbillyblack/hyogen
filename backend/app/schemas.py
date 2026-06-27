@@ -50,7 +50,8 @@ class Word(BaseModel):
 
     `reading` is the word's hiragana reading and is set only when the word
     contains kanji. `kanji` lists the kanji characters in the surface form;
-    look them up in the response `glossary` for English meanings.
+    look them up in the response `glossary` for English meanings. `lemma` is the
+    dictionary form (used to build the word glossary).
     """
 
     surface: str
@@ -58,11 +59,26 @@ class Word(BaseModel):
     pos: str | None = None  # part of speech (UniDic pos1)
     contains_kanji: bool = False
     kanji: list[str] = []
+    lemma: str | None = None
+    lemma_reading: str | None = None
 
 
 class Line(BaseModel):
     text: str
     words: list[Word]
+
+
+class WordEntry(BaseModel):
+    """A glossary entry for a whole word (e.g. 表現 → "expression").
+
+    `kanji` are the characters in the word; look them up in the per-kanji
+    `glossary` for the individual breakdown (rendered as a collapsible detail).
+    """
+
+    word: str
+    reading: str | None = None
+    definitions: list[str] = []
+    kanji: list[str] = []
 
 
 class AnalyzeResponse(BaseModel):
@@ -71,5 +87,7 @@ class AnalyzeResponse(BaseModel):
     source: str | None = None
     has_lyrics: bool
     lines: list[Line] = []
-    # Deduplicated glossary of every kanji that appears in the song.
+    # Word-level glossary (primary), ordered by first appearance.
+    word_glossary: list[WordEntry] = []
+    # Per-kanji glossary, for the collapsible breakdown under each word.
     glossary: dict[str, KanjiInfo] = {}

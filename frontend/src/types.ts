@@ -6,11 +6,20 @@ export interface Word {
   pos: string | null;
   contains_kanji: boolean;
   kanji: string[];
+  lemma: string | null;
+  lemma_reading: string | null;
 }
 
 export interface Line {
   text: string;
   words: Word[];
+}
+
+export interface WordEntry {
+  word: string;
+  reading: string | null;
+  definitions: string[];
+  kanji: string[];
 }
 
 export interface KanjiInfo {
@@ -31,6 +40,7 @@ export interface AnalyzeResponse {
   source: string | null;
   has_lyrics: boolean;
   lines: Line[];
+  word_glossary: WordEntry[];
   glossary: Record<string, KanjiInfo>;
 }
 

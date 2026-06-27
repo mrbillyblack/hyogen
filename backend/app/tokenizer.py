@@ -42,6 +42,22 @@ def tokenize_line(line: str) -> list[Word]:
         if pos == "*":
             pos = None
 
+        # Dictionary form + its reading, used to look up word definitions and to
+        # disambiguate which JMdict sense applies (e.g. 回る → まわる, not めぐる).
+        lemma = getattr(node.feature, "lemma", None)
+        if lemma == "*":
+            lemma = None
+        elif lemma:
+            # UniDic appends a disambiguation tag to some lemmas (e.g.
+            # "引く-他動詞"); strip it for clean lookup/display. The tag uses an
+            # ASCII hyphen, distinct from the chōonpu ー used inside words.
+            lemma = lemma.split("-", 1)[0]
+        lemma_reading: str | None = None
+        if contains:
+            kana_base = getattr(node.feature, "kanaBase", None)
+            if kana_base and kana_base != "*":
+                lemma_reading = katakana_to_hiragana(kana_base)
+
         words.append(
             Word(
                 surface=surface,
@@ -49,6 +65,8 @@ def tokenize_line(line: str) -> list[Word]:
                 pos=pos,
                 contains_kanji=contains,
                 kanji=kanji_chars,
+                lemma=lemma,
+                lemma_reading=lemma_reading,
             )
         )
     return words
