@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SearchBar } from "./components/SearchBar";
 import { LyricsPane } from "./components/LyricsPane";
 import { GlossaryPane } from "./components/GlossaryPane";
@@ -29,10 +29,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
+  // The glossary word (lemma) currently linked from a hovered/tapped lyric.
+  const [activeWord, setActiveWord] = useState<string | null>(null);
 
   async function analyze(input: { videoId?: string; url?: string }) {
     setError(null);
     setResults(null);
+    setActiveWord(null);
     setLoading(true);
     try {
       const data = await analyzeSong(input);
@@ -86,6 +89,12 @@ export default function App() {
 
   const hasAnalysis = !!analysis?.has_lyrics;
 
+  // Lemmas that have a glossary entry — i.e. which lyric words are linkable.
+  const glossaryWords = useMemo(
+    () => new Set((analysis?.word_glossary ?? []).map((w) => w.word)),
+    [analysis],
+  );
+
   return (
     <div className="app">
       <header className="app-header">
@@ -138,10 +147,16 @@ export default function App() {
       </div>
 
       <main className="panes">
-        <LyricsPane lines={analysis?.lines ?? []} />
+        <LyricsPane
+          lines={analysis?.lines ?? []}
+          glossaryWords={glossaryWords}
+          activeWord={activeWord}
+          onActivate={setActiveWord}
+        />
         <GlossaryPane
           words={analysis?.word_glossary ?? []}
           kanji={analysis?.glossary ?? {}}
+          activeWord={activeWord}
         />
       </main>
     </div>

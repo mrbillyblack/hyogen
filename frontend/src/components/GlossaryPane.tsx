@@ -1,16 +1,29 @@
+import { useEffect, useRef } from "react";
 import { Pane } from "./Pane";
 import type { KanjiInfo, WordEntry } from "../types";
 
 interface Props {
   words: WordEntry[];
   kanji: Record<string, KanjiInfo>;
+  activeWord: string | null;
 }
 
 /**
- * Word-level glossary. Each entry shows the word, its reading and English
- * definition; expanding it reveals the individual kanji that make it up.
+ * Word-level glossary. Each entry shows the word, reading and definition, and
+ * expands to its per-kanji breakdown. When a lyric word is hovered/tapped, the
+ * matching entry highlights and scrolls into view.
  */
-export function GlossaryPane({ words, kanji }: Props) {
+export function GlossaryPane({ words, kanji, activeWord }: Props) {
+  const refs = useRef(new Map<string, HTMLDetailsElement>());
+
+  useEffect(() => {
+    if (!activeWord) return;
+    refs.current.get(activeWord)?.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth",
+    });
+  }, [activeWord]);
+
   return (
     <Pane title="Glossary">
       {words.length === 0 ? (
@@ -22,7 +35,14 @@ export function GlossaryPane({ words, kanji }: Props) {
             .filter((k): k is KanjiInfo => !!k && k.found);
 
           return (
-            <details key={w.word} className="g-word">
+            <details
+              key={w.word}
+              ref={(el) => {
+                if (el) refs.current.set(w.word, el);
+                else refs.current.delete(w.word);
+              }}
+              className={"g-word" + (activeWord === w.word ? " active" : "")}
+            >
               <summary>
                 <span className="g-kanji">{w.word}</span>
                 {w.reading && <span className="g-reading">{w.reading}</span>}
