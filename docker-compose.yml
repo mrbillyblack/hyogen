@@ -1,0 +1,85 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: hyogen-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hyogen
+      POSTGRES_PASSWORD: hyogen
+      POSTGRES_DB: hyogen
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hyogen"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hyogen
+
+  api:
+    build:
+      # Build context is the project root so the image can install the
+      # vendored ytmusicapi fork next to the backend.
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: hyogen-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://hyogen:hyogen@db:5432/hyogen
+      CORS_ORIGINS: http://localhost,https://localhost,http://localhost:5173
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - hyogen
+
+  # Vite dev server in a Node container for local testing. For production the
+  # frontend builds to static assets (npm run build) and deploys to Cloudflare
+  # Pages; this service is dev-only.
+  frontend:
+    image: node:20-alpine
+    container_name: hyogen-frontend
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      # Dev-server proxy target inside the compose network.
+      VITE_API_PROXY: http://api:8000
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - api
+    networks:
+      - hyogen
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: hyogen-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - hyogen
+
+volumes:
+  pg_data:
+  caddy_data:
+  caddy_config:
+  frontend_node_modules:
+
+networks:
+  hyogen:
+    driver: bridge

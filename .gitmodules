@@ -1,0 +1,3 @@
+[submodule "ytmusicapi"]
+	path = ytmusicapi
+	url = git@github.com:mrbillyblack/ytmusicapi.git

@@ -1,0 +1,31 @@
+# Caddyfile — reverse proxy for Hyogen.
+# Local dev:  http://localhost  → FastAPI
+# Production: replace "localhost" with your domain; Caddy auto-provisions TLS.
+
+http://localhost {
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle /docs* {
+        reverse_proxy api:8000
+    }
+
+    handle /openapi.json {
+        reverse_proxy api:8000
+    }
+
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    # Catch-all — reserve for a future frontend, fall back to the API for now.
+    handle {
+        reverse_proxy api:8000
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

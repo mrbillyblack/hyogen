@@ -1,0 +1,11 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+httpx==0.28.1
+pydantic-settings==2.7.1
+# Japanese morphological analysis (word-level readings). fugashi wheels bundle
+# MeCab; unidic-lite bundles the dictionary — no apt/system packages needed.
+fugashi==1.5.2
+unidic-lite==1.0.8
+# ytmusicapi is installed from the vendored fork (see Dockerfile).

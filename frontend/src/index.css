@@ -1,0 +1,281 @@
+:root {
+  --indigo: #4f46e5;
+  --indigo-dark: #4338ca;
+  --ink: #1f2330;
+  --muted: #6b7280;
+  --line: #d8dbe3;
+  --paper: #fcfcfd;
+  --rt: #8b5cf6;
+
+  --font-jp: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo",
+    "Noto Sans JP", system-ui, sans-serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  gap: 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Header ------------------------------------------------------------------ */
+.app-header h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.app-kanji {
+  font-family: var(--font-jp);
+  color: var(--indigo);
+  font-weight: 700;
+}
+
+/* Search ------------------------------------------------------------------ */
+.search-area {
+  position: relative;
+}
+
+.searchbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.searchbar-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.searchbar-input:focus {
+  border-color: var(--indigo);
+}
+
+.searchbar-btn {
+  padding: 0 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--indigo);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.searchbar-btn:hover:not(:disabled) {
+  background: var(--indigo-dark);
+}
+
+.searchbar-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  margin: 0.5rem 0 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.now-playing {
+  margin: 0.5rem 0 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Search results dropdown ------------------------------------------------- */
+.results {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  margin: 0.4rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.results li button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.results li button:hover {
+  background: #f3f4f6;
+}
+
+.result-title {
+  font-weight: 600;
+}
+
+.result-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Panes ------------------------------------------------------------------- */
+.panes {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 1rem;
+}
+
+.pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.pane-title {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-bottom: 2px solid var(--line);
+  background: #f8f9fc;
+}
+
+.pane-inner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.pane-body {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  /* faint notebook ruling, echoing the sketch */
+  background-image: linear-gradient(var(--line) 1px, transparent 1px);
+  background-size: 100% 2.25rem;
+  background-position: 0 1rem;
+}
+
+.pane-scroll {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-left: 2px solid var(--line);
+  background: #f8f9fc;
+}
+
+.pane-scroll button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--muted);
+  padding: 0.5rem 0.6rem;
+}
+
+.pane-scroll button:hover {
+  color: var(--indigo);
+}
+
+.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Lyrics ------------------------------------------------------------------ */
+.lyric-line {
+  margin: 0;
+  line-height: 2.25rem;
+  font-family: var(--font-jp);
+  font-size: 1.15rem;
+}
+
+.lyric-blank {
+  height: 1.1rem;
+}
+
+ruby rt {
+  font-size: 0.6em;
+  color: var(--rt);
+  font-weight: 600;
+}
+
+/* Glossary ---------------------------------------------------------------- */
+.glossary-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  line-height: 2.25rem;
+}
+
+.g-kanji {
+  font-family: var(--font-jp);
+  font-size: 1.3rem;
+  font-weight: 700;
+  min-width: 1.6em;
+}
+
+.g-reading {
+  font-family: var(--font-jp);
+  color: var(--indigo);
+}
+
+.g-dash {
+  color: var(--muted);
+}
+
+.g-meaning {
+  color: var(--ink);
+}
+
+/* Narrow screens: stack panes vertically --------------------------------- */
+@media (max-width: 640px) {
+  .panes {
+    flex-direction: column;
+  }
+}
