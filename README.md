@@ -1,0 +1,157 @@
+# Hyogen 表現
+
+Annotate Japanese song lyrics. Hyogen fetches lyrics from YouTube Music,
+segments each line into words, spells the kanji-bearing words out in hiragana
+(contextual furigana via MeCab), and gives an English definition for each kanji
+sourced from [kanjiapi.dev](https://kanjiapi.dev).
+
+## How it works
+
+1. **Lyrics** — given a YouTube/YT Music `videoId` (or URL), the backend uses a
+   vendored fork of [`ytmusicapi`](./ytmusicapi) to resolve the song's lyrics
+   browseId and fetch the lyric text. No auth required for public lyrics.
+2. **Tokenization** — each line is segmented into words with MeCab
+   (fugashi + unidic-lite). A word's reading comes from UniDic's `kana` field
+   (the kana spelling, e.g. 東京 → トウキョウ — not the phonetic `pron`,
+   トーキョー), folded to hiragana. This gives the reading actually used in
+   context (回る → まわる), which a per-character lookup cannot.
+3. **Per-kanji meanings** — every unique kanji (anything *not* hiragana/katakana
+   in the CJK range, plus the 々 iteration mark) is looked up against
+   kanjiapi.dev for its English meanings, returned as a deduplicated glossary.
+4. **Lazy cache** — kanji lookups are cached in Postgres. Only kanji that
+   actually appear in a song are ever fetched, and each is fetched at most once
+   (404s are cached too). A re-analysis of the same song hits the cache and
+   makes zero outbound kanjiapi calls.
+
+## Stack
+
+- **React + Vite** (`frontend/`) — installable PWA; search/paste box + a Lyrics
+  pane (furigana) and a Glossary pane
+- **FastAPI** (`backend/app`) — async API
+- **MeCab** (fugashi + unidic-lite) — word segmentation + contextual readings
+- **Postgres 16** — kanji cache
+- **Caddy** — reverse proxy on `:80` (auto-TLS in production)
+- **ytmusicapi fork** (`ytmusicapi/`) — vendored, installed from source
+
+## Project structure
+
+```
+hyogen/
+├── ytmusicapi/             # vendored fork (lyrics source)
+├── backend/
+│   ├── app/
+│   │   ├── main.py            # FastAPI app + routes
+│   │   ├── config.py          # env-driven settings
+│   │   ├── db.py              # async SQLAlchemy engine/session
+│   │   ├── models.py          # Kanji cache table
+│   │   ├── schemas.py         # Pydantic request/response models
+│   │   ├── kana.py            # char classification + katakana→hiragana
+│   │   ├── tokenizer.py       # MeCab word segmentation + contextual readings
+│   │   ├── kanji_service.py   # kanjiapi.dev client + lazy Postgres cache
+│   │   ├── lyrics_service.py  # ytmusicapi wrapper (videoId/URL → lyrics)
+│   │   └── analyze.py         # ties lyrics + tokenizer + kanji lookup together
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/                # React + Vite PWA
+│   ├── src/
+│   │   ├── App.tsx             # search + Lyrics/Glossary panes
+│   │   ├── api.ts              # fetch wrappers (/api/*)
+│   │   ├── types.ts           # mirrors backend response models
+│   │   └── components/         # SearchBar, Pane, LyricsPane, GlossaryPane
+│   ├── vite.config.ts         # dev proxy to backend + PWA manifest
+│   └── package.json
+├── docker-compose.yml       # db + api + frontend + caddy
+├── Caddyfile
+└── .env.example
+```
+
+## Running
+
+```bash
+docker compose up -d --build
+```
+
+Brings up Postgres, the API, the frontend dev server, and Caddy:
+
+- **Frontend** — http://localhost:5173 (Vite dev server, hot reload)
+- **API** — http://localhost (through Caddy), docs at http://localhost/docs
+
+The frontend container proxies `/api/*` to the backend (`VITE_API_PROXY`), so
+the UI calls same-origin paths and there's no CORS to manage in dev.
+
+### Frontend (production / Cloudflare Pages)
+
+The frontend is a static SPA. Build with `npm run build` (output in
+`frontend/dist`) and deploy `dist/` to Cloudflare Pages. In production, point the
+app at the API origin (e.g. via a Pages rewrite of `/api/*`, or a build-time
+base URL).
+
+To run the API directly (needs a local Postgres; copy `.env.example` to `.env`):
+
+```bash
+cd backend
+pip install -r requirements.txt
+pip install ../ytmusicapi
+uvicorn app.main:app --reload --port 8000
+```
+
+## API
+
+| Method | Path | Description |
+|---|---|---|
+| GET  | `/health` | Liveness check |
+| GET  | `/api/search?q=` | Search YouTube Music for songs (returns videoIds) |
+| POST | `/api/analyze` | Annotate a song's lyrics. Body: `{"videoId": "..."}` or `{"url": "..."}` |
+| GET  | `/api/kanji/{char}` | Readings + meanings for a single kanji |
+
+Interactive docs at `http://localhost/docs`.
+
+### Example
+
+```bash
+curl -X POST http://localhost/api/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"videoId":"Gzuk7oK7ngE"}'
+```
+
+```jsonc
+{
+  "video_id": "Gzuk7oK7ngE",
+  "title": "反面教師 - Bad example",
+  "has_lyrics": true,
+  "lines": [
+    {
+      "text": "罵られたって ウザイ日だって",
+      "words": [
+        {"surface": "罵ら", "reading": "ののしら", "pos": "動詞",
+         "contains_kanji": true, "kanji": ["罵"]},
+        {"surface": "れ", "reading": null, "pos": "助動詞",
+         "contains_kanji": false, "kanji": []},
+        {"surface": "日", "reading": "ひ", "pos": "名詞",
+         "contains_kanji": true, "kanji": ["日"]}
+        // ...one entry per word; `reading` is the contextual furigana
+      ]
+    }
+  ],
+  "glossary": {
+    "罵": {"character": "罵", "found": true,
+           "readings_hiragana": ["ののしる", "ば"], "meanings": ["abuse", "insult"],
+           "grade": null, "jlpt": 1, "stroke_count": 15}
+    // ...one entry per unique kanji in the song (English meanings live here)
+  }
+}
+```
+
+Each word carries the reading actually used in context; look up the characters
+in `word.kanji` against the top-level `glossary` for English meanings.
+
+## Notes
+
+- Word readings come from MeCab's contextual segmentation, so 回る → まわる and
+  今 → いま are resolved correctly. The `glossary` still lists *all* possible
+  readings per kanji (from kanjiapi) alongside the English meanings.
+- kanjiapi.dev rejects the default Python User-Agent (403), so the client sets
+  one explicitly.
+- fugashi/unidic-lite ship MeCab + the dictionary as pip wheels, so no system
+  packages are needed in the image. unidic-lite adds ~250 MB to the image; swap
+  in full `unidic` if you need more accurate readings for rare words.
