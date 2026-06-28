@@ -31,7 +31,7 @@ class SearchResult(BaseModel):
 
 
 class KanjiInfo(BaseModel):
-    """Readings + meanings for a single kanji, sourced from kanjiapi.dev."""
+    """Readings + meanings for a single kanji, sourced from KanjiDic2."""
 
     character: str
     found: bool = True

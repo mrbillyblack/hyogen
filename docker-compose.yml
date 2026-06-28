@@ -1,23 +1,7 @@
 services:
 
-  db:
-    image: postgres:16-alpine
-    container_name: hyogen-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: hyogen
-      POSTGRES_PASSWORD: hyogen
-      POSTGRES_DB: hyogen
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hyogen"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - hyogen
-
+  # The backend is fully self-contained: all dictionary data (JMdict, KanjiDic2,
+  # MeCab/UniDic) is bundled in the image, so there is no database service.
   api:
     build:
       # Build context is the project root so the image can install the
@@ -27,11 +11,7 @@ services:
     container_name: hyogen-api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://hyogen:hyogen@db:5432/hyogen
       CORS_ORIGINS: http://localhost,https://localhost,http://localhost:5173
-    depends_on:
-      db:
-        condition: service_healthy
     networks:
       - hyogen
 
@@ -75,7 +55,6 @@ services:
       - hyogen
 
 volumes:
-  pg_data:
   caddy_data:
   caddy_config:
   frontend_node_modules:

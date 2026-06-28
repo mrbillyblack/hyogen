@@ -1,0 +1,17 @@
+# The build context is the hyogen project root (see docker-compose.yml). Docker
+# only reads .dockerignore from the context root, so this is the one that counts
+# (backend/.dockerignore and frontend/.dockerignore are not used by the api build).
+# Keeping volatile/dev files out makes the context snapshot smaller and avoids
+# BuildKit "failed to compute cache key" errors from files changing mid-build.
+
+**/__pycache__
+**/*.pyc
+**/.venv
+.venv1
+**/.env
+**/node_modules
+frontend/dist
+frontend/.vite
+.git
+ytmusicapi/.git
+docs

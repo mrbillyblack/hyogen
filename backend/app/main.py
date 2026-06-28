@@ -1,17 +1,14 @@
 """FastAPI application for Hyogen — annotate Japanese lyrics with kanji readings."""
 
 import re
-from contextlib import asynccontextmanager
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import anki_service, kanji_service
 from .analyze import analyze_lyrics
 from .config import settings
-from .db import get_session, init_db
 from .lyrics_service import extract_video_id, fetch_lyrics, search_songs
 from .schemas import (
     AnalyzeRequest,
@@ -21,14 +18,7 @@ from .schemas import (
     SearchResult,
 )
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_db()
-    yield
-
-
-app = FastAPI(title="Hyogen", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Hyogen", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,9 +48,7 @@ async def search(q: str, limit: int = 10) -> list[SearchResult]:
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
-async def analyze(
-    req: AnalyzeRequest, session: AsyncSession = Depends(get_session)
-) -> AnalyzeResponse:
+async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
     """Fetch a song's lyrics and annotate every kanji with readings + meanings."""
     raw = req.video_id or req.url or ""
     try:
@@ -75,7 +63,7 @@ async def analyze(
             status_code=502, detail=f"Failed to fetch lyrics: {exc}"
         ) from exc
 
-    return await analyze_lyrics(session, lyrics)
+    return await analyze_lyrics(lyrics)
 
 
 @app.post("/api/anki")
@@ -102,10 +90,8 @@ async def anki(req: AnkiRequest) -> Response:
 
 
 @app.get("/api/kanji/{char}", response_model=KanjiInfo)
-async def kanji(
-    char: str, session: AsyncSession = Depends(get_session)
-) -> KanjiInfo:
-    """Look up a single kanji (lazy-cached from kanjiapi.dev)."""
+async def kanji(char: str) -> KanjiInfo:
+    """Look up a single kanji (readings + meanings, from KanjiDic2)."""
     if len(char) != 1:
         raise HTTPException(status_code=400, detail="Provide exactly one character.")
-    return await kanji_service.get_one(session, char)
+    return kanji_service.get_one(char)

@@ -5,12 +5,8 @@ whole word glossary in a single thread-pool call (one jamdict instance, used
 serially — no concurrency concerns).
 """
 
-from fastapi.concurrency import run_in_threadpool
-from jamdict import Jamdict
-
+from .dictionaries import jam
 from .schemas import Word, WordEntry
-
-_jam = Jamdict()
 
 
 def _glosses_for(lemma: str, surface: str, reading: str | None) -> list[str]:
@@ -19,9 +15,9 @@ def _glosses_for(lemma: str, surface: str, reading: str | None) -> list[str]:
     Prefers the JMdict entry whose kana reading matches MeCab's contextual
     reading (so 回る → まわる "to turn", not めぐる "to go around").
     """
-    result = _jam.lookup(lemma)
+    result = jam.lookup(lemma)
     if not result.entries and surface != lemma:
-        result = _jam.lookup(surface)
+        result = jam.lookup(surface)
     if not result.entries:
         return []
 
@@ -41,7 +37,7 @@ def _glosses_for(lemma: str, surface: str, reading: str | None) -> list[str]:
     return glosses
 
 
-def _build(words: list[Word]) -> list[WordEntry]:
+def build_word_glossary(words: list[Word]) -> list[WordEntry]:
     seen: set[str] = set()
     entries: list[WordEntry] = []
     for w in words:
@@ -61,7 +57,3 @@ def _build(words: list[Word]) -> list[WordEntry]:
             )
         )
     return entries
-
-
-async def build_word_glossary(words: list[Word]) -> list[WordEntry]:
-    return await run_in_threadpool(_build, words)

@@ -47,7 +47,7 @@ def classify(ch: str) -> str:
 def katakana_to_hiragana(text: str) -> str:
     """Convert katakana to hiragana, leaving everything else untouched.
 
-    Used so on'yomi readings (which kanjiapi returns in katakana) can be shown
+    Used so on'yomi readings (which KanjiDic2 gives in katakana) can be shown
     in hiragana alongside the kun'yomi readings.
     """
     out: list[str] = []

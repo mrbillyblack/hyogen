@@ -21,24 +21,23 @@ with a per-kanji breakdown available underneath.
    (まわる), not "to go around" (めぐる). This is the primary glossary —
    defining 表現 ("expression"), not just 表 and 現.
 4. **Per-kanji meanings** — every unique kanji (anything *not* hiragana/katakana
-   in the CJK range, plus the 々 iteration mark) is looked up against
-   kanjiapi.dev for its English meanings. These power the collapsible per-kanji
-   breakdown shown under each glossary word.
-5. **Lazy cache** — kanji lookups are cached in Postgres. Only kanji that
-   actually appear in a song are ever fetched, and each is fetched at most once
-   (404s are cached too). A re-analysis of the same song hits the cache and
-   makes zero outbound kanjiapi calls. (JMdict is local, so word lookups need no
-   cache.)
+   in the CJK range, plus the 々 iteration mark) is looked up in **KanjiDic2**
+   (bundled with `jamdict`, the same dataset kanjiapi.dev is built from). These
+   power the collapsible per-kanji breakdown shown under each glossary word.
+5. **No database** — both dictionaries (JMdict, KanjiDic2) and the MeCab
+   dictionary ship inside the image, so the backend is fully self-contained:
+   no Postgres, no kanjiapi.dev calls, no network at lookup time. The only
+   runtime network call is fetching lyrics from YouTube Music. This makes it
+   ideal for stateless, scale-to-zero hosting (e.g. Cloud Run).
 
 ## Stack
 
 - **React + Vite** (`frontend/`) — installable PWA; search/paste box, a Lyrics
   pane (furigana) and a word Glossary pane, light/dark theme, hamburger menu
-- **FastAPI** (`backend/app`) — async API
+- **FastAPI** (`backend/app`) — async API, no database
 - **MeCab** (fugashi + unidic-lite) — word segmentation + contextual readings
-- **JMdict** (jamdict + jamdict-data) — offline word definitions
+- **jamdict + jamdict-data** — offline JMdict (words) + KanjiDic2 (kanji)
 - **genanki** — exports the glossary as an Anki deck (.apkg)
-- **Postgres 16** — kanji cache
 - **Caddy** — reverse proxy on `:80` (auto-TLS in production)
 - **ytmusicapi fork** (`ytmusicapi/`) — vendored, installed from source
 
@@ -50,13 +49,12 @@ hyogen/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py            # FastAPI app + routes
-│   │   ├── config.py          # env-driven settings
-│   │   ├── db.py              # async SQLAlchemy engine/session
-│   │   ├── models.py          # Kanji cache table
+│   │   ├── config.py          # env-driven settings (CORS)
 │   │   ├── schemas.py         # Pydantic request/response models
 │   │   ├── kana.py            # char classification + katakana→hiragana
 │   │   ├── tokenizer.py       # MeCab word segmentation + contextual readings
-│   │   ├── kanji_service.py   # kanjiapi.dev client + lazy Postgres cache
+│   │   ├── dictionaries.py    # shared jamdict instance (JMdict + KanjiDic2)
+│   │   ├── kanji_service.py   # per-kanji readings/meanings from KanjiDic2
 │   │   ├── word_service.py    # JMdict (jamdict) word definitions
 │   │   ├── anki_service.py    # builds an Anki deck (.apkg) from the glossary
 │   │   ├── lyrics_service.py  # ytmusicapi wrapper (search + videoId/URL → lyrics)
@@ -72,7 +70,7 @@ hyogen/
 │   │   └── components/         # SearchBar, Pane, LyricsPane, GlossaryPane, Menu
 │   ├── vite.config.ts         # dev proxy to backend + PWA manifest
 │   └── package.json
-├── docker-compose.yml       # db + api + frontend + caddy
+├── docker-compose.yml       # api + frontend + caddy (no database)
 ├── Caddyfile
 └── .env.example
 ```
@@ -83,7 +81,7 @@ hyogen/
 docker compose up -d --build
 ```
 
-Brings up Postgres, the API, the frontend dev server, and Caddy:
+Brings up the API, the frontend dev server, and Caddy (no database):
 
 - **Frontend** — http://localhost:5173 (Vite dev server, hot reload)
 - **API** — http://localhost (through Caddy), docs at http://localhost/docs
@@ -98,7 +96,7 @@ The frontend is a static SPA. Build with `npm run build` (output in
 app at the API origin (e.g. via a Pages rewrite of `/api/*`, or a build-time
 base URL).
 
-To run the API directly (needs a local Postgres; copy `.env.example` to `.env`):
+To run the API directly (no database needed — all data is bundled):
 
 ```bash
 cd backend
@@ -173,8 +171,10 @@ curl -X POST http://localhost/api/analyze \
   Japanese renders with system fonts, no font embedding). "Anki deck" downloads
   an `.apkg` (front = kanji word, back = reading + definition) built by
   `genanki`.
-- kanjiapi.dev rejects the default Python User-Agent (403), so the client sets
-  one explicitly.
-- fugashi/unidic-lite ship MeCab + the dictionary as pip wheels, so no system
-  packages are needed in the image. unidic-lite adds ~250 MB to the image; swap
-  in full `unidic` if you need more accurate readings for rare words.
+- All dictionaries ship as pip wheels (no system packages, no DB): fugashi
+  bundles MeCab, unidic-lite the MeCab dictionary, and jamdict-data the JMdict +
+  KanjiDic2 SQLite. Together they add ~600 MB to the image but make the backend
+  network-free for lookups.
+- jamdict's SQLite is thread-affine, so kanji/word lookups run synchronously on
+  the event-loop thread (not the thread pool). Lookups are sub-millisecond, so
+  this is fine; revisit if you ever need heavy lookup concurrency.
