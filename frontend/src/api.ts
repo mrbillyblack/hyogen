@@ -1,6 +1,9 @@
 import type { AnalyzeResponse, SearchResult, WordEntry } from "./types";
 
-const BASE = "/api";
+// Same-origin "/api" in dev (Vite proxy); in production set VITE_API_BASE to the
+// deployed API, e.g. https://api.YOURDOMAIN/api (include the /api suffix — the
+// calls below append /search, /analyze, etc.).
+const BASE = import.meta.env.VITE_API_BASE || "/api";
 
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
