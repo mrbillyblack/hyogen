@@ -6,6 +6,7 @@ interface Props {
   words: WordEntry[];
   kanji: Record<string, KanjiInfo>;
   activeWord: string | null;
+  loading: boolean;
 }
 
 /**
@@ -13,7 +14,7 @@ interface Props {
  * expands to its per-kanji breakdown. When a lyric word is hovered/tapped, the
  * matching entry highlights and scrolls into view.
  */
-export function GlossaryPane({ words, kanji, activeWord }: Props) {
+export function GlossaryPane({ words, kanji, activeWord, loading }: Props) {
   const refs = useRef(new Map<string, HTMLDetailsElement>());
 
   useEffect(() => {
@@ -26,7 +27,9 @@ export function GlossaryPane({ words, kanji, activeWord }: Props) {
 
   return (
     <Pane title="Glossary">
-      {words.length === 0 ? (
+      {loading ? (
+        <p className="loading">Loading…</p>
+      ) : words.length === 0 ? (
         <p className="empty">Word definitions will appear here.</p>
       ) : (
         words.map((w) => {

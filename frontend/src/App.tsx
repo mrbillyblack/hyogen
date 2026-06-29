@@ -152,11 +152,13 @@ export default function App() {
           glossaryWords={glossaryWords}
           activeWord={activeWord}
           onActivate={setActiveWord}
+          loading={loading}
         />
         <GlossaryPane
           words={analysis?.word_glossary ?? []}
           kanji={analysis?.glossary ?? {}}
           activeWord={activeWord}
+          loading={loading}
         />
       </main>
     </div>

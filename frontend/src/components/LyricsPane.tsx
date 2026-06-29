@@ -6,6 +6,7 @@ interface Props {
   glossaryWords: Set<string>;
   activeWord: string | null;
   onActivate: (word: string) => void;
+  loading: boolean;
 }
 
 function ruby(w: Word) {
@@ -23,10 +24,18 @@ function ruby(w: Word) {
  * Lyrics with furigana. Kanji words that have a glossary entry are interactive:
  * hovering or tapping one activates the matching glossary word on the right.
  */
-export function LyricsPane({ lines, glossaryWords, activeWord, onActivate }: Props) {
+export function LyricsPane({
+  lines,
+  glossaryWords,
+  activeWord,
+  onActivate,
+  loading,
+}: Props) {
   return (
     <Pane title="Lyrics">
-      {lines.length === 0 ? (
+      {loading ? (
+        <p className="loading">Loading…</p>
+      ) : lines.length === 0 ? (
         <p className="empty">Paste a link or search a song to see lyrics.</p>
       ) : (
         lines.map((line, i) =>

@@ -378,6 +378,22 @@ body {
   font-style: italic;
 }
 
+.loading {
+  color: var(--muted);
+  font-weight: 600;
+  animation: hyogen-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes hyogen-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* Lyrics ------------------------------------------------------------------ */
 .lyric-line {
   margin: 0;
