@@ -1,0 +1,15 @@
+# Cloudflare Pages applies these HTTP response headers to the published site.
+# Vite copies public/ -> dist/, and Pages reads _headers from the output.
+# NOTE: these are response headers, NOT env variables.
+#
+# The CSP is in REPORT-ONLY mode: the browser logs violations to the console
+# but blocks nothing. Once the console is clean, rename the header from
+# "Content-Security-Policy-Report-Only" to "Content-Security-Policy" to enforce.
+# (Heads-up: enforcing script-src 'self' may flag Vite's inlined module-preload
+# polyfill / the PWA registration — if so, set build.modulePreload.polyfill=false
+# in vite.config.ts before enforcing.)
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy-Report-Only: default-src 'self'; connect-src 'self' https://api.hyogen.app; img-src 'self' data: https://storage.ko-fi.com; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
